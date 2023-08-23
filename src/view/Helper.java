@@ -1,29 +1,13 @@
 package view;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.bson.Document;
@@ -54,12 +38,10 @@ public class Helper extends Configured implements Tool {
             FileSystem fs = hdfsInputPath.getFileSystem(conf);
             FSDataInputStream inputStream = fs.open(hdfsInputPath);
 
-            // Đọc dữ liệu từ tệp và in ra màn hình
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String line;
             int count = 0;
             while ((line = reader.readLine()) != null) {
-//                System.out.println(line);
             	values[count] = line;
             	count += 1;
             }
@@ -68,47 +50,13 @@ public class Helper extends Configured implements Tool {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
-//        Path hdfsFolderPath = new Path("/k-output1"); // Thay đổi đường dẫn này thành thư mục bạn muốn liệt kê.
-//
-//        try {
-//            FileSystem fs = hdfsFolderPath.getFileSystem(conf);
-//            FileStatus[] status = fs.listStatus(hdfsFolderPath);
-//
-//            for (FileStatus fileStatus : status) {
-//                if (fileStatus.isDirectory()) {
-//                    System.out.println("Folder: " + fileStatus.getPath());
-//                }
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        FileSystem hdfs = FileSystem.get(conf);
-//        FileStatus[] status = hdfs.listStatus(new Path(folderOutputPath));
-//
-//        for (int i = 0; i < status.length; i++) {
-//            if (!status[i].getPath().toString().endsWith("_SUCCESS")) {
-//                Path outFilePath = status[i].getPath();
-//                System.out.println("read " + outFilePath.toString());
-//                BufferedReader br = new BufferedReader(new InputStreamReader(hdfs.open(outFilePath)));
-//                String line = null;
-//                int count = 0;
-//                while ((line = br.readLine()) != null) {
-//                    System.out.println(line);
-//                    values[count] = line;
-//                    count += 1;
-//                }
-//                br.close();
-//            }
-//        }
 
         return values;
     }
 
     public String[] start() throws Exception {
-        String inputFilePath = "k-input/data-customer.csv";
+        String inputFilePath = "k-input/data-customer.txt";
         String outputFolderPath = "result";
-        String outputFileName = "result.txt";
 
         if (inputFilePath == null || outputFolderPath == null) {
             System.err.printf(
@@ -117,26 +65,15 @@ public class Helper extends Configured implements Tool {
             ToolRunner.printGenericCommandUsage(System.err);
             return null;
         }
-        
-//        Configuration conf = getConf();
-//        Configuration conf = new Configuration();
-
-        // Đặt các thuộc tính cấu hình tùy chỉnh
-//        conf.set("fs.defaultFS", "hdfs://localhost:8020");
-//        conf.set("mapreduce.framework.name", "yarn");
-//        conf.set("mapreduce.jobtracker.address", "localhost:8021");
-//        conf.set("mapreduce.cluster.local.dir", "/tmp/hadoop-local");
-//        conf.addResource(new Path("/opt/homebrew/Cellar/hadoop/3.3.6/libexec/etc/hadoop/hdfs-site.xml"));
-//        conf.addResource(new Path("/opt/homebrew/Cellar/hadoop/3.3.6/libexec/etc/hadoop/core-site.xml"));
-        String[] newCentroidPoints = readCentroidsFromReducerOutput(this.conf, 4, outputFolderPath);
+        String[] newCentroidPoints = readCentroidsFromReducerOutput(this.conf, 3, outputFolderPath);
         return newCentroidPoints;
     }
     
     
     public long WriteNewInput(String inputPath) throws IOException {
-    	MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017"); // Thay đổi URL kết nối tùy theo cài đặt của bạn
-    	MongoDatabase database = mongoClient.getDatabase("clustering"); // Thay đổi tên cơ sở dữ liệu của bạn
-    	MongoCollection<Document> collection = database.getCollection("customers_test"); // Thay đổi tên bảng của bạn
+    	MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
+    	MongoDatabase database = mongoClient.getDatabase("clustering"); 
+    	MongoCollection<Document> collection = database.getCollection("customers");
     	MongoCursor<Document> cursor = collection.find().iterator();
 
     	FileSystem fs = FileSystem.get(this.conf);
@@ -156,9 +93,8 @@ public class Helper extends Configured implements Tool {
             int detergentsPaper = document.getInteger("detergents_paper");
             int delicassen = document.getInteger("delicassen");
 
-            // Tạo chuỗi định dạng và in ra kết quả
             String result = String.format("%d,%d,%d,%d,%d,%d,%d,%d", channel, region, fresh, milk, grocery, frozen, detergentsPaper, delicassen);
-            System.out.println(result);
+//            System.out.println(result);
             outputStream.writeBytes(result + "\n");
         }
         outputStream.close();
@@ -167,9 +103,9 @@ public class Helper extends Configured implements Tool {
     }
     
     public void insertData(String value) {
-    	MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017"); // Thay đổi URL kết nối tùy theo cài đặt của bạn
-    	MongoDatabase database = mongoClient.getDatabase("clustering"); // Thay đổi tên cơ sở dữ liệu của bạn
-    	MongoCollection<Document> collection = database.getCollection("customers_test"); // Thay đổi tên bảng của bạn
+    	MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
+    	MongoDatabase database = mongoClient.getDatabase("clustering");
+    	MongoCollection<Document> collection = database.getCollection("customers");
     	
     	String[] values = value.split(",");
     	Document document = new Document("channel", Integer.parseInt(values[0]))
@@ -195,48 +131,32 @@ public class Helper extends Configured implements Tool {
     	                       "-Dlines=" + lines + " " + 
     	                       "-Dresult=result.txt " +
     	                       "-Dmaxloop=100 " +
-    	                       "-Dk=4 " +
+    	                       "-Dk=3 " +
     	                       "-Dthresh=0.0001 " +
     	                       "-DNumReduceTasks=2 " +
     	                       "-Dout=" + folderOutputPath;
-//    	      command = "/opt/homebrew/Cellar/hadoop/3.3.6/bin/hadoop version";
-    	      System.out.println(command);
-//    	      ProcessBuilder processBuilder = new ProcessBuilder(command);
-    	      Process process = Runtime.getRuntime().exec(command);
-//              BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-//              String line;
-//
-//              while ((line = reader.readLine()) != null) {
-//                  System.out.println(line);
-//              }
-    	      InputStream errorStream = process.getErrorStream();
-              BufferedReader errorReader = new BufferedReader(new InputStreamReader(errorStream));
-              String errorLine;
-              while ((errorLine = errorReader.readLine()) != null) {
-                  System.out.println(errorLine);
-              }
+    	      
+    	      ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
+    	      processBuilder.redirectErrorStream(true);
+    	      Process process = processBuilder.start();
 
-              // Wait for the process to complete
-              int exitCode = process.waitFor();
-              if (exitCode == 0) {
-                  System.out.println("Process completed successfully.");
-              } else {
-                  System.out.println("Process failed with exit code: " + exitCode);
-              }
-              
-              
-    	      
-    	      
-    	  	
+    	      BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+    	      String line;
+    	      while ((line = reader.readLine()) != null) {
+    	          System.out.println(line);
+    	      }
+
+    	      int exitCode = process.waitFor();
+    	      if (exitCode == 0) {
+    	          System.out.println("Process completed successfully.");
+    	      } else {
+    	          System.out.println("Process failed with exit code: " + exitCode);
+    	      }
     	  } catch (Exception ex) {
-    	  	System.out.println("Loi: " + ex.toString());
+    	  	System.out.println("Error: " + ex.toString());
     	  }
     }
     
-    
-    
-    
-
     @Override
     public int run(String[] arg0) throws Exception {
         // TODO Auto-generated method stub

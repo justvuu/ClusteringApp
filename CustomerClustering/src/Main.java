@@ -1,8 +1,5 @@
-package service;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -28,17 +25,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-import com.mongodb.hadoop.MongoInputFormat;
-import org.bson.BSONObject;
-
-//import com.mongodb.MongoClient;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
-import org.bson.Document;
-
-public class Service extends Configured implements Tool{
+public class Main extends Configured implements Tool {
 
 	public static Customer[] initRandomCentroids(int kClusters, int nLineOfInputFile, String inputFilePath,
 			Configuration conf) throws IOException {
@@ -95,9 +82,10 @@ public class Service extends Configured implements Tool{
 			if (!status[i].getPath().toString().endsWith("_SUCCESS")) {
 				Path outFilePath = status[i].getPath();
 				BufferedReader br = new BufferedReader(new InputStreamReader(hdfs.open(outFilePath)));
-				String line = null;
+				String line = null;// br.readLine();
 				while ((line = br.readLine()) != null) {
-					String[] strCentroidInfo = line.split("\t");
+
+					String[] strCentroidInfo = line.split("\t"); // Split line in K,V
 					int centroidId = Integer.parseInt(strCentroidInfo[0]);
 					String[] attrPoint = strCentroidInfo[1].split(",");
 					customers[centroidId] = new Customer(attrPoint);
@@ -156,42 +144,39 @@ public class Service extends Configured implements Tool{
 	}
 
 	public int run(String[] args) throws Exception {
-		Configuration conf = new Configuration();
-		conf.set("fs.defaultFS", "hdfs://localhost:8020");
-		conf.set("mapreduce.framework.name", "yarn");
-		conf.set("mapreduce.jobtracker.address", "localhost:8021");
-		conf.set("mapreduce.cluster.local.dir", "/tmp/hadoop-local");
 
-		int nClusters = conf.getInt("k", 4);
-		String inputFilePath = conf.get("in", "/k-input2/customer-data2.txt");
-		String outputFolderPath = conf.get("out", "/k-output9");
+		Configuration conf = getConf();
+		String inputFilePath = conf.get("in", null);
+		String outputFolderPath = conf.get("out", null);
 		String outputFileName = conf.get("result", "result.txt");
+
+		int nClusters = conf.getInt("k", 3);
 		float thresholdStop = conf.getFloat("thresh", 0.001f);
-		int numLineOfInputFile = conf.getInt("lines", 30);
-		int nReduceTask = conf.getInt("NumReduceTask", 2);
-		MAX_LOOP = 50;
-		
+		int numLineOfInputFile = conf.getInt("lines", 0);
+		MAX_LOOP = conf.getInt("maxloop", 50);
+		int nReduceTask = conf.getInt("NumReduceTask", 1);
+		if (inputFilePath == null || outputFolderPath == null || numLineOfInputFile == 0) {
+			System.err.printf(
+					"Usage: %s -Din <input file name> -Dlines <number of lines in input file> -Dout <Folder ouput> -Dresult <output file result> -Dk <number of clusters> -Dthresh <Threshold>\n",
+					getClass().getSimpleName());
+			ToolRunner.printGenericCommandUsage(System.err);
+			return -1;
+		}
 		Customer[] oldCentroidPoints = initRandomCentroids(nClusters, numLineOfInputFile, inputFilePath, conf);
 		Customer[] centroidsInit = copyCentroids(oldCentroidPoints);
 		saveCentroidsForShared(conf, oldCentroidPoints);
 		int nLoop = 0;
 
 		Customer[] newCentroidPoints = null;
-		 String javaHome = System.getProperty("JAVA_HOME");
-
-        // Print the JAVA_HOME value to the logs.
-        System.out.println("JAVA_HOME on this node: " + javaHome);
-
-//		System.setProperty("JAVA_HOME", "/Library/Java/JavaVirtualMachines/jdk-11.0.12.jdk/Contents/Home/bin/java");
+		long t1 = (new Date()).getTime();
 		while (true) {
-			System.out.println("Job started");
 			nLoop++;
 			if (nLoop == MAX_LOOP) {
 				break;
 			}
 			@SuppressWarnings("deprecation")
 			Job job = new Job(conf, "K-Mean");
-			job.setJarByClass(Service.class);
+			job.setJarByClass(Main.class);
 			job.setMapperClass(KMapper.class);
 			job.setCombinerClass(KCombiner.class);
 			job.setReducerClass(KReducer.class);
@@ -199,12 +184,7 @@ public class Service extends Configured implements Tool{
 			job.setMapOutputValueClass(Customer.class);
 			job.setOutputKeyClass(Text.class);
 			job.setOutputValueClass(Text.class);
-			
-//			job.setInputFormatClass(MongoInputFormat.class);
-//			Configuration mongodbConfig = new Configuration();
-//			mongodbConfig.set("mongo.input.uri", "mongodb://localhost:27017/clustering.customers");
-//			job.getConfiguration().set("mongo.input.uri", mongodbConfig.get("mongo.input.uri"));
-			
+
 			FileInputFormat.addInputPath(job, new Path(inputFilePath));
 
 			FileOutputFormat.setOutputPath(job, new Path(outputFolderPath));
@@ -233,13 +213,14 @@ public class Service extends Configured implements Tool{
 			printCentroids(newCentroidPoints, "");
 			writeFinalResult(conf, newCentroidPoints, outputFolderPath + "/" + outputFileName, centroidsInit);
 		}
+		System.out.println("K-MEANS CLUSTERING FINISHED!");
+		System.out.println("Time:" + ((new Date()).getTime() - t1) + "ms");
 
 		return 1;
 	}
+
 	public static void main(String[] args) throws Exception {
-		int exitCode = ToolRunner.run(new Service(), args);
-		System.out.println("FINISHED " + exitCode);
+		int exitCode = ToolRunner.run(new Main(), args);
 		System.exit(exitCode);
-		
 	}
 }

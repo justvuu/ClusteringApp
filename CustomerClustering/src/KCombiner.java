@@ -1,5 +1,10 @@
-package service;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
@@ -9,26 +14,24 @@ public class KCombiner extends Reducer<LongWritable, Customer, LongWritable, Cus
 			throws IOException, InterruptedException {
 
 		String[] centroid = context.getConfiguration().getStrings("C" + centroidId);
-		System.out.println("Da vao combiner");
 		Customer currCentroid = new Customer(centroid);
-//		System.out.println("---Current centroid: " + currCentroid.toString() + ":");
-		
+		FileSystem hdfs = FileSystem.get(context.getConfiguration());
+		FSDataOutputStream dos = hdfs.create(new Path("/k-output/cluster_" + (centroidId.get() + 1) + ".txt"), true);
+		BufferedWriter br = new BufferedWriter(new OutputStreamWriter(dos));
+		br.write("CENTROID: " + currCentroid.toString() + ":");
+		br.newLine();
 		Customer ptSum = Customer.copy(customers.iterator().next());
+		br.write(ptSum.toString());
+		br.newLine();
 		
-//		System.out.println("\t" + ptSum.toString());
 		while (customers.iterator().hasNext()) {
 			Customer crr = customers.iterator().next();
-//			System.out.println("\t" + crr.toString());
 			ptSum.sum(crr);
-			
-//			ptSum.sum(points.iterator().next());
+			br.write(crr.toString());
+			br.newLine();
 		}
-		
-//		System.out.println("\n---TEST---");
-//		System.out.println("-Output of KCombiner:\n");
-//		System.out.println(ptSum.toString());
-//		
-//		System.out.print("\n");
+		br.close();
+		hdfs.close();
 
 		context.write(centroidId, ptSum);
 	}

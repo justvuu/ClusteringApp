@@ -12,7 +12,6 @@ public class Main {
         JFrame frame = new JFrame("Clustering App");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Tạo một instance của lớp chứa giao diện
         AppUI appUI = new AppUI();
         frame.getContentPane().add(appUI);
 

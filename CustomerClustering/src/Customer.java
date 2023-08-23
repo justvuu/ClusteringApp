@@ -1,4 +1,3 @@
-package service;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -19,7 +18,7 @@ public class Customer implements Writable {
 	private int nCustomers;
 
 	public Customer() {
-//		this.dim = 0;
+
 	}
 
 	public Customer(final float[] c) {
@@ -127,7 +126,6 @@ public class Customer implements Writable {
 		this.detergents_paper += c.detergents_paper;
 		this.delicassen += c.delicassen;
 		this.nCustomers += c.nCustomers;
-		System.out.println(" => Vu test -> So du lieu: " + this.nCustomers + "\n");
 	}
 
 	public double calcDistance(Customer c) {
@@ -154,18 +152,6 @@ public class Customer implements Writable {
 	}
 
 	public void calcAverage() {
-//		float[] thisAttributes = new float[] {
-//		        this.channel, this.region, this.fresh, this.milk,
-//		        this.grocery, this.frozen, this.detergents_paper, this.delicassen
-//		    };
-//		for (int i = 0; i < thisAttributes.length; i++) {
-//			System.out.println(" => Vu test -> So du lieu: " + this.nCustomers + "\n");
-//			System.out.println(" => Vu test -> Gia tri ban dau: " + thisAttributes[i] + "\n");
-//			float temp = thisAttributes[i] / this.nCustomers;
-//			thisAttributes[i] = (float) Math.round(temp * 100000) / 100000.0f;
-//			System.out.println(" => Vu test -> Gia tri sau do: " + thisAttributes[i] + "\n");
-//		}
-		
 		this.channel = (float) Math.round((this.channel / this.nCustomers) * 100000) / 100000.0f;
 		this.region = (float) Math.round((this.region / this.nCustomers) * 100000) / 100000.0f;
 		this.fresh = (float) Math.round((this.fresh / this.nCustomers) * 100000) / 100000.0f;

@@ -1,12 +1,10 @@
-package service;
 import java.io.IOException;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 
 import org.apache.hadoop.mapreduce.Mapper;
-import org.bson.Document;
 
-public class KMapper extends Mapper<LongWritable, Document, LongWritable, Customer> {
+public class KMapper extends Mapper<LongWritable, Text, LongWritable, Customer> {
 
 	private Customer[] currCentroids;
 	private final LongWritable centroidId = new LongWritable();
@@ -14,7 +12,6 @@ public class KMapper extends Mapper<LongWritable, Document, LongWritable, Custom
 
 	@Override
 	public void setup(Context context) {
-		System.out.println("Da vao setup cua mapper");
 		int nClusters = Integer.parseInt(context.getConfiguration().get("k"));
 		this.currCentroids = new Customer[nClusters];
 		for (int i = 0; i < nClusters; i++) {
@@ -24,21 +21,10 @@ public class KMapper extends Mapper<LongWritable, Document, LongWritable, Custom
 	}
 
 	@Override
-	protected void map(LongWritable key, Document value, Context context) throws IOException, InterruptedException {
-		System.out.println("Da vao setup cua mapper");
-		int channel = value.getInteger("channel");
-        int region = value.getInteger("region");
-        int fresh = value.getInteger("fresh");
-        int milk = value.getInteger("milk");
-        int grocery = value.getInteger("grocery");
-        int frozen = value.getInteger("frozen");
-        int detergentsPaper = value.getInteger("detergents_paper");
-        int delicassen = value.getInteger("delicassen");
+	protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 
-        String result = String.format("%d,%d,%d,%d,%d,%d,%d,%d", channel, region, fresh, milk, grocery, frozen, detergentsPaper, delicassen);
-		String[] arrPropCustomer = result.toString().split(",");
+		String[] arrPropCustomer = value.toString().split(",");
 		customerInput.set(arrPropCustomer);
-		System.out.println("Chuoi dau vao: " + result);
 		double minDistance = Double.MAX_VALUE;
 		int centroidIdNearest = 0;
 		for (int i = 0; i < currCentroids.length; i++) {
